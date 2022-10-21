@@ -1,1 +1,1 @@
-type op = OP_HALT  (** halt operator*) | OP_CONST  (** const operator*)
+type op = OP_HALT  (** halt operator*) | OP_CONST  (** const operator*) | Int of int (** the index of value stored in the valueStack*)

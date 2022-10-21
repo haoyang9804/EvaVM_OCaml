@@ -1,40 +1,51 @@
 open EvaValue
 open Bytecode.OpCode
 
-module type Stack = sig
-  (** Module type for Value Stack and Instruction Stack *)
-  type t 
-  type tlist = t list
-  val empty : tlist
-  val push : t -> tlist -> tlist
-  val pop : tlist -> tlist
-  val peek : tlist -> t
-  val peek_pop : tlist -> t * tlist
-end
+let stack_limit = 1024
+let constPool_limit = 1024
+let _dynamic_stack_limit = ref 64
+let _dynamic_constPool_limit = ref 64
+let constantPool = ref (Array.make !_dynamic_constPool_limit NULL)
+let instructions : op list ref = ref []
+let stack = ref (Array.make !_dynamic_stack_limit NULL)
 
-module PlainStack = struct
-  let empty = []
-  let push ele stack = ele :: stack
-  exception EmptyStack
+(** stack pointer sp*)
+let sp = ref 0
 
-  let pop = function _ :: t -> t | _ -> raise EmptyStack
-  let peek = function h :: _ -> h | _ -> raise EmptyStack
-  let peek_pop stack = (peek stack, pop stack) 
-end
+exception Lessthan0
+let popStack () = 
+  if !sp < 0 then raise Lessthan0
+  else sp := !sp - 1; !stack.(!sp)
 
-(** ValueStack is a stack for values that are directly passed or indirectly calculated*)
-module ValueStack : Stack = struct
+exception STACK_OVERFLOW
+let pushStack value =
+  if !sp > stack_limit then raise STACK_OVERFLOW
+  else
+    if !sp > !_dynamic_stack_limit then
+      let extraStack = Array.make !_dynamic_stack_limit NULL in
+      stack := Array.append !stack extraStack;
+      _dynamic_stack_limit := 2 * !_dynamic_stack_limit;
+      !stack.(!sp) <- value;
+      sp := !sp + 1
+    else
+      !stack.(!sp) <- value;
+      sp := !sp + 1
 
-  type t = evaValue
-  type tlist = evaValue list
-  (* let empty = [] *)
-include PlainStack
-end
+exception UnexpectedOP
+exception Error_OP_CONST
+exception Empty_Instruction
 
-(** InstructionStack is a stack of low-level instructions*)
-module InstructionStack : Stack  = struct
-  type t = op
-  type tlist = op list
-include PlainStack
-end
-
+let rec eval _instructions =
+  match List.hd _instructions with
+  | OP_HALT ->
+    popStack () 
+  | OP_CONST -> 
+    (match _instructions with 
+      | OP_CONST :: (Int constIndex :: tail) -> 
+        pushStack !constantPool.(constIndex);
+        eval tail
+      | _ -> failwith "Incorrect subsequent op after OP_CONST")
+  | _ -> raise UnexpectedOP
+    
+    
+     

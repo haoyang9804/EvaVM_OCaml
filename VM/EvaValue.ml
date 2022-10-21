@@ -3,7 +3,11 @@
     Instruction stack and value stack
 *)
 
-type evaValue = Number of float
+type evaValue = NULL | Number of float
 
 (** Constructor for NUMBER *)
 let number_ value = Number value
+
+let _number = function
+    | Number value -> value
+    | _ -> failwith "not a number"
